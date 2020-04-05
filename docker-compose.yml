@@ -1,0 +1,10 @@
+version: '3'
+services:
+  mitnick:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      REDIS_PORT: 6789
+  redis:
+    image: "redis:alpine"
