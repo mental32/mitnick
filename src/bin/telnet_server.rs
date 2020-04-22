@@ -74,9 +74,18 @@ async fn main() {
     use std::sync::Arc;
 
     loop {
-        let (mut reader, mut writer) = {
-            let (socket, _) = listener.accept().await.unwrap();
-            socket.into_split()
+        let (address, (mut reader, mut writer)) = {
+            let (mut socket, _) = listener.accept().await.unwrap();
+
+            socket.write(&vec![0xFF, 0xFD, 0x03]).await.unwrap();  // IAC, DO, SA
+            socket.write(&vec![0xFF, 0xFB, 0x01]).await.unwrap();  // IAC, WONT, ECHO
+            socket.write(&vec![0xFF, 0xFD, 0x22]).await.unwrap();  // IAC, DO, LINEMODE (line -> char)
+
+            // TODO: Interpret incoming TELNET/IAC sequences.
+
+            let address = socket.peer_addr().unwrap();
+
+            (address, socket.into_split())
         };
 
         let (client_tx, mut client_rx) = unbounded_channel();
