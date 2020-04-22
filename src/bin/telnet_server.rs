@@ -58,12 +58,14 @@ async fn main() {
                                 NetworkEvent::Disconnect { ident } => ident,
                             };
 
-                            println!("? {:?}", event);
-
-                            dbg!(sessions.lock().unwrap().get(&ident))
-                                .unwrap()
-                                .send(event)
-                                .unwrap();
+                            if let Ok(mut guard) = sessions.lock() {
+                                if let Some(tx) = guard.get(&ident) {
+                                    if tx.send(event).is_err() { // Broken channel for the session...Assume disconnected.
+                                        guard.remove(&ident);
+                                        let _ = data_tx.send(NetworkEvent::Disconnect { ident });
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -117,22 +119,22 @@ async fn main() {
         tokio::task::spawn(async move {
             let mut buf = [0; 1];
 
-            loop {
-                while let Ok(n) = reader.read_exact(&mut buf).await {
-                    if n == 0 {
-                        let disconnect = NetworkEvent::Disconnect { ident };
-                        let _ = data_tx.send(disconnect);
-                        break;
-                    } else {
-                        let data = NetworkEvent::Data {
-                            ident,
-                            body: buf.to_vec(),
-                        };
+            while let Ok(n) = reader.read_exact(&mut buf).await {
+                if n == 0 {
+                    let disconnect = NetworkEvent::Disconnect { ident };
+                    let _ = data_tx.send(disconnect);
+                    break;
+                } else {
+                    let data = NetworkEvent::Data {
+                        ident,
+                        body: buf.to_vec(),
+                    };
 
-                        let _ = data_tx.send(data);
-                    }
+                    let _ = data_tx.send(data);
                 }
             }
+
+            let _ = data_tx.send(NetworkEvent::Disconnect { ident });
         });
     }
 }
