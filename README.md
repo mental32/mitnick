@@ -12,7 +12,7 @@
 >
 > ***May the command line live forever!***
 
-Mitnick is a open world hacking game set in the terminal.
+Mitnick is a retro hacking MMO-RTS game set in the terminal, in 1983.
 
 ## Installing
 
