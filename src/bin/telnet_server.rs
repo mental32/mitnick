@@ -100,7 +100,7 @@ async fn main() {
 
         let data_tx = data_tx.clone();
 
-        let _ = data_tx.send(NetworkEvent::Connect { ident });
+        let _ = data_tx.send(NetworkEvent::Connect { ident, address });
 
         tokio::task::spawn(async move {
             while let Some(event) = client_rx.recv().await {
