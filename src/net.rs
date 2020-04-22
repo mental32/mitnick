@@ -4,10 +4,27 @@ use std::net::SocketAddr;
 
 use serde::{Deserialize, Serialize};
 
+pub type AccessToken = [u8; 8];
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum NetworkEvent {
-    Connect { ident: usize, address: SocketAddr },
-    Disconnect { ident: usize },
-    Data { ident: usize, body: Vec<u8> },
-    Heartbeat { sequence: usize },
+    Connect {
+        ident: usize,
+        address: SocketAddr,
+        access_token: AccessToken,
+    },
+
+    Disconnect {
+        ident: usize,
+    },
+
+    Data {
+        ident: usize,
+        body: Vec<u8>,
+    },
+
+    Heartbeat {
+        sequence: usize,
+    },
+
 }
