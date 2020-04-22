@@ -1,6 +1,6 @@
 //! Network primitives used by the core and any connection transports.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum NetworkEvent {
