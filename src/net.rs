@@ -9,4 +9,5 @@ pub enum NetworkEvent {
     Connect { ident: usize, address: SocketAddr },
     Disconnect { ident: usize },
     Data { ident: usize, body: Vec<u8> },
+    Heartbeat { sequence: usize },
 }

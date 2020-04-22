@@ -32,11 +32,12 @@ async fn main() {
         }
     });
 
-    let mut sessions: Arc<Mutex<HashMap<usize, UnboundedSender<NetworkEvent>>>> =
+    let sessions: Arc<Mutex<HashMap<usize, UnboundedSender<NetworkEvent>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
     {
         let sessions = sessions.clone();
+        let data_tx = data_tx.clone();
 
         thread::spawn(move || {
             let mut items = vec![
@@ -52,10 +53,14 @@ async fn main() {
 
                     if let Ok(inbound) = socket.recv_bytes(zmq::DONTWAIT) {
                         if let Ok(event) = bincode::deserialize::<NetworkEvent>(&inbound) {
-                            let ident = match event {
-                                NetworkEvent::Data { ident, body: _ } => ident,
-                                NetworkEvent::Connect { ident } => ident,
-                                NetworkEvent::Disconnect { ident } => ident,
+                            let ident = match dbg!(&event) {
+                                NetworkEvent::Data { ident, body: _ } => *ident,
+                                NetworkEvent::Connect { ident, .. } => *ident,
+                                NetworkEvent::Disconnect { ident } => *ident,
+                                NetworkEvent::Heartbeat { sequence } => {
+                                    let _ = data_tx.send(NetworkEvent::Heartbeat { sequence: sequence + 1 });
+                                    continue;
+                                },
                             };
 
                             if let Ok(mut guard) = sessions.lock() {
