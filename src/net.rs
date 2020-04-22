@@ -27,4 +27,12 @@ pub enum NetworkEvent {
         sequence: usize,
     },
 
+    Suspend {
+        ident: usize,
+        message: Option<String>,
+    },
+
+    Resume {
+        ident: usize,
+    },
 }
