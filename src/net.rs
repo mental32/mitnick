@@ -36,3 +36,11 @@ pub enum NetworkEvent {
         ident: usize,
     },
 }
+
+impl From<NetworkEvent> for tmq::Multipart {
+    fn from(ev: NetworkEvent) -> Self {
+        let s = bincode::serialize(&ev).unwrap();
+        let m: tmq::Message = s.into();
+        m.into()
+    }
+}
