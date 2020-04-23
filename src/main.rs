@@ -1,12 +1,16 @@
 use std::path::PathBuf;
-use std::thread;
 
+use futures::{SinkExt, StreamExt};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "May the command line live forever!")]
 enum Mitnick {
+    /// Used to initialize a new world.
     Init {
+        #[structopt(long)]
+        redis_address: Option<String>,
+
         #[structopt(long)]
         hosts: usize,
 
@@ -14,53 +18,57 @@ enum Mitnick {
         output: PathBuf,
     },
 
+    /// Start running the core.
     Run {
         #[structopt(long)]
-        redis_addr: Option<String>,
+        redis_address: Option<String>,
     },
 }
 
-#[paw::main]
+// #[paw::main]
 // #[actix_rt::main]
-fn main(args: Mitnick) {
-    match args {
-        Mitnick::Init { hosts, output } => {}
-        Mitnick::Run { redis_addr } => {
-            let context = zmq::Context::new();
-            let socket = context.socket(zmq::ROUTER).unwrap();
+#[tokio::main]
+async fn main() {
+    let args = Mitnick::from_args();
 
-            let _ = socket.bind("ipc:///tmp/mitnick-core");
+    match args {
+        Mitnick::Init { .. } => {}
+        Mitnick::Run { .. } => {
+            let context = tmq::Context::new();
+            let mut socket = tmq::router(&context)
+                .bind("ipc://tmp/mitnick-core")
+                .unwrap();
 
             use mitnick::net::NetworkEvent;
 
-            while let Ok(message) = socket.recv_multipart(0x00) {
+            while let Some(Ok(message)) = socket.next().await {
                 if let Ok(event) = bincode::deserialize::<NetworkEvent>(&message[1]) {
                     match event {
-                        NetworkEvent::Heartbeat { .. } => {
-
-                        },
+                        NetworkEvent::Heartbeat { .. }
+                        | NetworkEvent::Suspend { .. }
+                        | NetworkEvent::Resume { .. } => {}
 
                         NetworkEvent::Connect { ident, address } => {
                             println!("Connection from {:?} => ident={:?}", address, ident);
-                        },
+                        }
 
                         NetworkEvent::Data { ident, body } => {
                             if let Ok(text) = String::from_utf8(body) {
-                                // println!("{:?} => {:?}", ident, text);
-
                                 let data = bincode::serialize(&NetworkEvent::Data {
                                     ident,
                                     body: text.bytes().collect::<Vec<_>>(),
                                 })
                                 .unwrap();
-    
-                                let response = vec![message[0].clone(), data];
-                                let _ = socket.send_multipart(response, 0x00);
+
+                                let address = message[0].to_vec();
+
+                                let response = vec![address, data];
+                                let _ = socket.send(response).await;
                             }
-                        },
+                        }
 
                         NetworkEvent::Disconnect { ident: _ } => {
-                            let _ = socket.send_multipart(message, 0x00);
+                            let _ = socket.send(message).await;
                         }
                     }
                 }
