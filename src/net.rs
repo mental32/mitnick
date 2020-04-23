@@ -11,7 +11,6 @@ pub enum NetworkEvent {
     Connect {
         ident: usize,
         address: SocketAddr,
-        access_token: AccessToken,
     },
 
     Disconnect {
@@ -34,6 +33,7 @@ pub enum NetworkEvent {
 
     Resume {
         ident: usize,
+        access_token: Option<AccessToken>,
     },
 }
 
